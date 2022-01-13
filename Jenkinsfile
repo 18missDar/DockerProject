@@ -12,26 +12,33 @@ pipeline{
 	agent any
 	environment {
 // 	получпаем реквизиты для входа
+        JAR_VERSION = sh (returnStdout: true, script: 'mvn help:evaluate -Dexpression=project.version -q -DforceStdout').trim()
+        JAR_ARTIFACT_ID = sh (returnStdout: true, script: 'mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout').trim()
+        DOCKER_HUB_VERSION = JAR_VERSION.replace("-SNAPSHOT", "-snapshot")
 		DOCKERHUB_CREDENTIALS=credentials('dockerhub')
 	}
 	stages {
-		stage('Build') {
-			steps {
-				sh 'docker build -t $DOCKERHUB_CREDENTIALS_USR/hello_world:latest .'
-			}
-		}
-
-		stage('Login') {
-			steps {
-				sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
-			}
-		}
+		stage("Build") {
+            steps {
+                script {
+                   docker.build("--build-arg JAR_VERSION=${JAR_VERSION} --build-arg JAR_ARTIFACT_ID=${JAR_ARTIFACT_ID} -f Dockerfile .")
+                }
+           }
+        }
 
 	}
 
 	post {
-		always {
-			sh 'docker logout'
-		}
-	}
+       always {
+          sh "docker-compose down || true"
+       }
+
+       success {
+          bitbucketStatusNotify buildState: "SUCCESSFUL"
+       }
+
+       failure {
+          bitbucketStatusNotify buildState: "FAILED"
+       }
+    }
 }
