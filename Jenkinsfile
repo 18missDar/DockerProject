@@ -1,167 +1,150 @@
-def nameNetwork(String prefix) {
-    return prefix + "-" + UUID.randomUUID().toString()
-}
-
-def petclinicNetwork
-def curlNetwork
-
-def nameContainer(String prefix) {
-    return prefix + "-cont-" + UUID.randomUUID().toString()
-}
-
-def petclinicContainer
-def curlContainer
-
-def checkCurlOutput(String curlOutput) {
-    return curlOutput.contains('<title>PetClinic :: a Spring Framework demonstration</title>')
-}
-
+#!/usr/bin/env groovy
 pipeline {
-    agent any
-    environment {
-        JAR_VERSION = sh (returnStdout: true, script: 'mvn help:evaluate -Dexpression=project.version -q -DforceStdout').trim()
-        JAR_ARTIFACT_ID = sh (returnStdout: true, script: 'mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout').trim()
-        DOCKER_HUB_VERSION = JAR_VERSION.replace("-SNAPSHOT", "-snapshot")
-        DOCKER_HUB_USER = 'dzeru'
-        DOCKER_HUB_REPOSITORY = 'spring-petclinic'
-        CURL_NAME = 'petclinic-curl'
-        TELEGRAM_API_URL = 'https://api.telegram.org/bot'
-    }
-    stages {
-        stage("Init") {
-            steps {
-                echo 'BE FIRE NOT TO BURN, BE FIRE TO SEND LIGHT'
-            }
-        }
-        stage("Build") {
-            steps {
-                script {
-                    docker.build("${DOCKER_HUB_USER}/${DOCKER_HUB_REPOSITORY}:${DOCKER_HUB_VERSION}", "--build-arg JAR_VERSION=${JAR_VERSION} --build-arg JAR_ARTIFACT_ID=${JAR_ARTIFACT_ID} -f Dockerfile .")
-                }
-            }
-        }
-        stage("Login to Docker Hub") {
-            steps {
-                withCredentials([
-                    usernamePassword(credentialsId: 'docker_hub_credentials', usernameVariable: 'DOCKER_HUB_USER', passwordVariable: 'DOCKER_HUB_PASSWORD')
-                    ]) {
-                    sh 'echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_USER} --password-stdin'
-                }
-            }
-        }
-        stage("Push to Docker Hub") {
-            steps {
-                sh 'docker push ${DOCKER_HUB_USER}/${DOCKER_HUB_REPOSITORY}:${DOCKER_HUB_VERSION}'
-            }
-        }
-        stage("Pull from Docker Hub") {
-            steps {
-                sh 'docker pull ${DOCKER_HUB_USER}/${DOCKER_HUB_REPOSITORY}:${DOCKER_HUB_VERSION}'
-            }
-        }
-        stage("Create networks") {
-            steps {
-                script {
-                    petclinicNetwork = nameNetwork('petclinic')
-                    curlNetwork = nameNetwork('curl')
-                }
-                sh "docker network create ${petclinicNetwork}"
-                sh "docker network create ${curlNetwork}"
-            }
-        }
-        stage("Prepare Curl image") {
-            steps {
-                script {
-                    docker.build("${CURL_NAME}", "-f DockerfileCurl .")
-                }
-            }
-        }
-        stage("Test Spring Pet Clinic") {
-            steps {
-                script {
-                    petclinicContainer = nameContainer('petclinic')
-                    curlContainer = nameContainer('curl')
-                    sh ("docker run --name ${petclinicContainer} --network ${petclinicNetwork} -p 9000:9000 ${DOCKER_HUB_USER}/${DOCKER_HUB_REPOSITORY}:${DOCKER_HUB_VERSION} &")
-                    def petclinicContainerRunning = sh(script: "docker container inspect -f '{{.State.Running}}' ${petclinicContainer}", returnStdout: true).trim()
-                    while (!petclinicContainerRunning.equals("true")) {
-                        println("Waiting for Spring Pet Clinic container readiness...")
-                        sleep(5)
-                        petclinicContainerRunning = sh(script: "docker container inspect -f '{{.State.Running}}' ${petclinicContainer}", returnStdout: true).trim()
-                    }
-                    def petclinicAppRunningCheck = "Tomcat started on port"
-                    def petclinicAppRunning = sh(script: "docker container logs ${petclinicContainer}", returnStdout: true)
-                    while (null == petclinicAppRunning || !petclinicAppRunning.contains(petclinicAppRunningCheck)) {
-                        println("Waiting for Spring Pet Clinic app readiness...")
-                        sleep(5)
-                        petclinicAppRunning = sh(script: "docker container logs ${petclinicContainer}", returnStdout: true)
-                    }
-                    def petclinicGateway = sh (
-                        script: "docker inspect -f '{{range.NetworkSettings.Networks}}{{.Gateway}}{{end}}' ${petclinicContainer}",
-                        returnStdout: true).trim()
-                    def curlOutput = sh (script: "docker run --name ${curlContainer} --network ${curlNetwork} ${CURL_NAME} ${petclinicGateway}:9000",
-                        returnStdout: true)
-                    if (!checkCurlOutput(curlOutput)) {
-                        warnError(message: 'Curl FAILED. Spring Pet Clinic returned wrong response.', buildResult: 'UNSTABLE', stageResult: 'UNSTABLE')
-                    } else {
-                        println("Curl is SUCCESSFUL. Lets celebrate it with the happy cat:")
-                        println ("""
+    agent { node { label 'swarm-ci' } }
 
-            .                .
-            :"-.          .-";
-            |:`.`.__..__.'.';|
-            || :-"      "-; ||
-            :;              :;
-            /  .==.    .==.  \\
-           :      _.--._      ;
-           ; .--.' `--' `.--. :
-          :   __;`      ':__   ;
-          ;  '  '-._:;_.-'  '  :
-          '.       `--'       .'
-           ."-._          _.-".
-         .'     ""------""     `.
-        /`-                    -'\\
-       /`-                      -'\\
-      :`-   .'              `.   -';
-      ;    /                  \\    :
-     :    :                    ;    ;
-     ;    ;                    :    :
-     ':_:.'                    '.;_;'
-        :_                      _;
-        ; "-._                -" :`-.     _.._
-        :_          ()          _;   "--::__. `.
-         \"-                  -"/`._           :
-        .-"-.                 -"-.  ""--..____.'
-       /         .__  __.         \\
-      : / ,       / "" \\       . \\ ;
-       "-:___..--"      "--..___;-"
-                            """)
+    environment {
+        TEST_PREFIX = "test-IMAGE"
+        TEST_IMAGE = "${env.TEST_PREFIX}:${env.BUILD_NUMBER}"
+        TEST_CONTAINER = "${env.TEST_PREFIX}-${env.BUILD_NUMBER}"
+        REGISTRY_ADDRESS = "my.registry.address.com"
+
+        SLACK_CHANNEL = "#deployment-notifications"
+        SLACK_TEAM_DOMAIN = "MY-SLACK-TEAM"
+        SLACK_TOKEN = credentials("slack_token")
+        DEPLOY_URL = "https://deployment.example.com/"
+
+        COMPOSE_FILE = "docker-compose.yml"
+        REGISTRY_AUTH = credentials("docker-registry")
+        STACK_PREFIX = "my-project-stack-name"
+    }
+
+    stages {
+        stage("Prepare") {
+            steps {
+                bitbucketStatusNotify buildState: "INPROGRESS"
+            }
+        }
+
+        stage("Build and start test image") {
+            steps {
+                sh "docker-composer build"
+                sh "docker-compose up -d"
+                waitUntilServicesReady
+            }
+        }
+
+        stage("Run tests") {
+            steps {
+                sh "docker-compose exec -T php-fpm composer --no-ansi --no-interaction tests-ci"
+                sh "docker-compose exec -T php-fpm composer --no-ansi --no-interaction behat-ci"
+            }
+
+            post {
+                always {
+                    junit "build/junit/*.xml"
+                    step([
+                            $class              : "CloverPublisher",
+                            cloverReportDir     : "build/coverage",
+                            cloverReportFileName: "clover.xml"
+                    ])
+                }
+            }
+        }
+
+        stage("Determine new version") {
+            when {
+                branch "master"
+            }
+
+            steps {
+                script {
+                    env.DEPLOY_VERSION = sh(returnStdout: true, script: "docker run --rm -v '${env.WORKSPACE}':/repo:ro softonic/ci-version:0.1.0 --compatible-with package.json").trim()
+                    env.DEPLOY_MAJOR_VERSION = sh(returnStdout: true, script: "echo '${env.DEPLOY_VERSION}' | awk -F'[ .]' '{print \$1}'").trim()
+                    env.DEPLOY_COMMIT_HASH = sh(returnStdout: true, script: "git rev-parse HEAD | cut -c1-7").trim()
+                    env.DEPLOY_BUILD_DATE = sh(returnStdout: true, script: "date -u +'%Y-%m-%dT%H:%M:%SZ'").trim()
+
+                    env.DEPLOY_STACK_NAME = "${env.STACK_PREFIX}-v${env.DEPLOY_MAJOR_VERSION}"
+                    env.IS_NEW_VERSION = sh(returnStdout: true, script: "[ '${env.DEPLOY_VERSION}' ] && echo 'YES'").trim()
+                }
+            }
+        }
+
+        stage("Create new version") {
+            when {
+                branch "master"
+                environment name: "IS_NEW_VERSION", value: "YES"
+            }
+
+            steps {
+                script {
+                    sshagent(['ci-ssh']) {
+                        sh """
+                            git config user.email "ci-user@email.com"
+                            git config user.name "Jenkins"
+                            git tag -a "v${env.DEPLOY_VERSION}" \
+                                -m "Generated by: ${env.JENKINS_URL}" \
+                                -m "Job: ${env.JOB_NAME}" \
+                                -m "Build: ${env.BUILD_NUMBER}" \
+                                -m "Env Branch: ${env.BRANCH_NAME}"
+                            git push origin "v${env.DEPLOY_VERSION}"
+                        """
                     }
+                }
+
+                sh "docker login -u=$REGISTRY_AUTH_USR -p=$REGISTRY_AUTH_PSW ${env.REGISTRY_ADDRESS}"
+                sh "docker-compose -f ${env.COMPOSE_FILE} build"
+                sh "docker-compose -f ${env.COMPOSE_FILE} push"
+            }
+        }
+
+        stage("Deploy to production") {
+            agent { node { label "swarm-prod" } }
+
+            when {
+                branch "master"
+                environment name: "IS_NEW_VERSION", value: "YES"
+            }
+
+            steps {
+                sh "docker login -u=$REGISTRY_AUTH_USR -p=$REGISTRY_AUTH_PSW ${env.REGISTRY_ADDRESS}"
+                sh "docker stack deploy ${env.DEPLOY_STACK_NAME} -c ${env.COMPOSE_FILE} --with-registry-auth"
+            }
+
+            post {
+                success {
+                    slackSend(
+                            teamDomain: "${env.SLACK_TEAM_DOMAIN}",
+                            token: "${env.SLACK_TOKEN}",
+                            channel: "${env.SLACK_CHANNEL}",
+                            color: "good",
+                            message: "${env.STACK_PREFIX} production deploy: *${env.DEPLOY_VERSION}*. <${env.DEPLOY_URL}|Access service> - <${env.BUILD_URL}|Check build>"
+                    )
+                }
+
+                failure {
+                    slackSend(
+                            teamDomain: "${env.SLACK_TEAM_DOMAIN}",
+                            token: "${env.SLACK_TOKEN}",
+                            channel: "${env.SLACK_CHANNEL}",
+                            color: "danger",
+                            message: "${env.STACK_PREFIX} production deploy failed: *${env.DEPLOY_VERSION}*. <${env.BUILD_URL}|Check build>"
+                    )
                 }
             }
         }
     }
+
     post {
         always {
-            sh "docker stop ${petclinicContainer}"
-            sh "docker container rm ${petclinicContainer}"
-            sh "docker network rm ${petclinicNetwork}"
-            sh "docker stop ${curlContainer}"
-            sh "docker container rm ${curlContainer}"
-            sh "docker network rm ${curlNetwork}"
+            sh "docker-compose down || true"
         }
+
         success {
-            withCredentials([string(credentialsId: 'telegram_bot_token', variable: 'TOKEN'), string(credentialsId: 'telegram_notification_channel', variable: 'CHAT_ID')]) {
-            sh """
-                curl -s -X POST ${TELEGRAM_API_URL}${TOKEN}/sendMessage -d chat_id=${CHAT_ID} -d parse_mode=markdown -d text='SUCCESSFUL build *${env.BUILD_TAG}* for *${env.CHANGE_BRANCH}*.\n\nBuild is triggered with change *${env.CHANGE_TITLE}* (${env.CHANGE_URL}) by ${env.GIT_AUTHOR_NAME}, email: ${env.GIT_AUTHOR_EMAIL}.'
-            """
-            }
+            bitbucketStatusNotify buildState: "SUCCESSFUL"
         }
+
         failure {
-            withCredentials([string(credentialsId: 'telegram_bot_token', variable: 'TOKEN'), string(credentialsId: 'telegram_notification_channel', variable: 'CHAT_ID')]) {
-            sh """
-                curl -s -X POST ${TELEGRAM_API_URL}${TOKEN}/sendMessage -d chat_id=${CHAT_ID} -d parse_mode=markdown -d text='FAILED build *${env.BUILD_TAG}* for *${env.CHANGE_BRANCH}*.\n\nBuild is triggered with change *${env.CHANGE_TITLE}* (${env.CHANGE_URL}) by ${env.GIT_AUTHOR_NAME}, email: ${env.GIT_AUTHOR_EMAIL}.'
-            """
-            }
+            bitbucketStatusNotify buildState: "FAILED"
         }
     }
 }
