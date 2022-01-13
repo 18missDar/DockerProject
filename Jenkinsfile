@@ -10,10 +10,12 @@ def withDockerNetwork(Closure inner) {
 
 pipeline{
 	agent any
-	environment {
-// 	получпаем реквизиты для входа
-		DOCKERHUB_CREDENTIALS=credentials('dockerhub')
-	}
+    environment {
+            JAR_VERSION = sh (returnStdout: true, script: 'mvn help:evaluate -Dexpression=project.version -q -DforceStdout').trim()
+            JAR_ARTIFACT_ID = sh (returnStdout: true, script: 'mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout').trim()
+            DOCKER_HUB_VERSION = JAR_VERSION.replace("-SNAPSHOT", "-snapshot")
+            DOCKER_HUB_USER = '18missDar'
+    }
 	stages {
 		stage('Build') {
 			steps {
@@ -59,8 +61,12 @@ pipeline{
 	}
 
 	post {
-		always {
-			sh 'docker logout'
-		}
-	}
+        always {
+           script {
+               if (getContext(hudson.FilePath)) {
+                   deleteDir()
+               }
+           }
+        }
+    }
 }
