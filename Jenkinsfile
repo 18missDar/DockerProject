@@ -1,66 +1,63 @@
-def withDockerNetwork(Closure inner) {
-  try {
-    networkId = UUID.randomUUID().toString()
-    bat "docker network create ${networkId}"
-    inner.call(networkId)
-  } finally {
-    bat "docker network rm ${networkId}"
+pipeline {
+
+  agent any
+
+  parameters {
+    string(name: 'server', defaultValue: "C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\NewProject_main")
+    string(name: 'emailTo', defaultValue: "miss.dar18@mail.ru")
   }
+
+  triggers {
+    pollSCM('* * * * *')
+  }
+
+  tools {
+    maven 'jenkinsMaven'
+  }
+
+  stages {
+    stage('Build') {
+      steps {
+          bat """
+            cd freddie-app
+            mvn clean package
+          """
+        }
+    }
+    stage('Deploy to Staging') {
+      steps {
+        echo 'Deploy to staging environment'
+
+        // Launch tomcat
+        bat """
+          cd ${params.server}qa\\bin
+          startup
+        """
+        bat """
+          cd ${params.server}staging\\bin
+          startup
+        """
+
+      }
+      post {
+        success {
+          emailNotification('Successfully Deployed to Staging')
+        }
+        failure {
+          emailNotification('FAILED to deploy to staging')
+        }
+      }
+    }
+  }
+
 }
 
-pipeline{
-	agent any
-	environment {
-// 	получпаем реквизиты для входа
-		DOCKERHUB_CREDENTIALS=credentials('dockerhub')
-	}
-	stages {
-		stage('Build') {
-			steps {
-				bat 'docker build -t $DOCKERHUB_CREDENTIALS_USR/hello_world:latest .'
-			}
-		}
-
-		stage("Check") {
-			agent any
-			steps {
-				script {
-					def app = docker.image("$DOCKERHUB_CREDENTIALS_USR/hello_world")
-					def client = docker.image("curlimages/curl")
-
-					withDockerNetwork{ n ->
-						app.withRun("--name app --network ${n}") { c ->
-							client.inside("--network ${n}") {
-                echo "I'm client!"
-                bat "sleep 60"
-								bat "curl -S --fail http://app:8080 > curl_output.txt"
-                sh "cat curl_output.txt"
-                archiveArtifacts artifacts: 'curl_output.txt'
-							}
-						}
-          }
-				}
-			}
-    }
-
-		stage('Login') {
-			steps {
-				bat 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
-			}
-		}
-
-
-
-		stage('Push') {
-			steps {
-				bat 'docker push $DOCKERHUB_CREDENTIALS_USR/hello_world:latest'
-			}
-		}
-	}
-
-	post {
-		always {
-			bat 'docker logout'
-		}
-	}
+def emailNotification(status) {
+  emailext(
+  to: "${params.emailTo}",
+  subject: "${status}",
+  body: "Job Name: <b>${env.JOB_NAME}</b> <br>" +
+      "Build: <b>${env.BUILD_NUMBER}</b> <br>" +
+      "<a href=${env.BUILD_URL}>Check Console Output</a>"
+  )
 }
