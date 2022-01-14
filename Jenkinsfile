@@ -2,6 +2,7 @@ pipeline{
 	agent any
 	environment {
 	    VERSION = '1.1.0'
+	    SERVER_CREDENTIALS = credentials('server-credentials')
 	}
 	stages {
 		stage('Build') {
@@ -13,11 +14,7 @@ pipeline{
 		stage('Login') {
 			steps {
 				echo 'login stage'
-				withCredentials([
-				usernamePassword(credentials: 'server-credentials', usernameVariable: USER, passwordVariable: PWD)
-				]){
-				echo "login with ${USR} and ${PWD}"
-				}
+				echo "login with ${SERVER_CREDENTIALS}"
 			}
 		}
 		stage('Push') {
