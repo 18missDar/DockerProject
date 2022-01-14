@@ -12,7 +12,6 @@ pipeline{
 		stage('Build') {
 			steps {
 				echo "build stage with version ${VERSION}"
-				bat "docker build https://github.com/18missDar/DockerProject.git#container:docker"
 			}
 		}
 
@@ -25,7 +24,7 @@ pipeline{
 		 stage("Push to Docker Hub") {
             steps {
               echo 'push stage'
-              bat "docker image push registry-host:5000/myadmin/rhel-httpd:latest"
+              bat "docker push 8878t/project:tagname"
             }
          }
 		stage("Create networks") {
