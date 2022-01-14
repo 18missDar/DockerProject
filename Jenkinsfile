@@ -7,6 +7,8 @@ pipeline{
 	environment {
 	    VERSION = '1.1.0'
 	    SERVER_CREDENTIALS = credentials('server-credentials')
+	    DOCKER_HUB_USER = 'dockerhub'
+        DOCKER_HUB_REPOSITORY = 'spring-petclinic'
 	}
 	stages {
 		stage('Build') {
@@ -21,11 +23,16 @@ pipeline{
 				echo "login with ${SERVER_CREDENTIALS}"
 			}
 		}
-		stage('Push') {
-			steps {
-				echo 'push stage'
-			}
-		}
+		 stage("Push to Docker Hub") {
+            steps {
+               dat 'docker push ${DOCKER_HUB_USER}/${DOCKER_HUB_REPOSITORY}:${VERSION}'
+            }
+         }
+         stage("Pull from Docker Hub") {
+             steps {
+                dat 'docker pull ${DOCKER_HUB_USER}/${DOCKER_HUB_REPOSITORY}:${VERSION}'
+            }
+        }
 		stage("Create networks") {
              steps {
                 script {
