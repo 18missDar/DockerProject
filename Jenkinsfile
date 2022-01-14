@@ -1,56 +1,49 @@
-pipeline {
 
-  agent any
-
-  parameters {
-    string(name: 'server', defaultValue: "C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\NewProject_main")
-    string(name: 'emailTo', defaultValue: "miss.dar18@mail.ru")
-  }
-
-  triggers {
-    pollSCM('* * * * *')
-  }
-
-  tools {
-    maven 'jenkinsMaven'
-  }
-
-  stages {
-    stage('Build') {
-      steps {
-          bat """
-            cd freddie-app
-            mvn clean package
-          """
-        }
-    }
-    stage('Deploy to Staging') {
-      steps {
-        echo 'Deploy to staging environment'
-
-        // Launch tomcat
-        bat """
-          cd ${params.server}qa\\bin
-          startup
-        """
-        bat """
-          cd ${params.server}staging\\bin
-          startup
-        """
-
+pipeline{
+	agent any
+	environment {
+		SERVER_CREDENTIALS=credentials('server-credentials')
+	}
+	parameters {
+        string(name: 'emailTo', defaultValue: "timothyjames.short@gmail.com")
       }
-      post {
-        success {
-          emailNotification('Successfully Deployed to Staging')
+	stages {
+		stage('Build') {
+			steps {
+				echo 'build stage'
+			}
+		}
+
+		stage('Login') {
+			steps {
+				echo 'login stage'
+				withCredentials([
+				usernamePassword(credentials: 'server-credentials', usernameVariable: USER, passwordVariable: PWD)
+				]){
+				bat 'some script ${USER} ${PWD}'
+				}
+			}
+		}
+		stage('Push') {
+			steps {
+				echo 'push stage'
+			}
+		}
+	}
+
+	post {
+		always {
+			bat 'docker logout'
+		}
+		success {
+           emailNotification('Successfully Deployed to Staging')
         }
         failure {
-          emailNotification('FAILED to deploy to staging')
+           emailNotification('FAILED to deploy to staging')
         }
-      }
-    }
-  }
-
+	}
 }
+
 
 def emailNotification(status) {
   emailext(
