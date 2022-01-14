@@ -12,33 +12,55 @@ pipeline{
 	agent any
 	environment {
 // 	получпаем реквизиты для входа
-        JAR_VERSION = sh (returnStdout: true, script: 'mvn help:evaluate -Dexpression=project.version -q -DforceStdout').trim()
-        JAR_ARTIFACT_ID = sh (returnStdout: true, script: 'mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout').trim()
-        DOCKER_HUB_VERSION = JAR_VERSION.replace("-SNAPSHOT", "-snapshot")
 		DOCKERHUB_CREDENTIALS=credentials('dockerhub')
 	}
 	stages {
-		stage("Build") {
-            steps {
-                script {
-                   docker.build("--build-arg JAR_VERSION=${JAR_VERSION} --build-arg JAR_ARTIFACT_ID=${JAR_ARTIFACT_ID} -f Dockerfile .")
-                }
-           }
-        }
+		stage('Build') {
+			steps {
+				sh 'docker build -t $DOCKERHUB_CREDENTIALS_USR/hello_world:latest .'
+			}
+		}
 
+		stage("Check") {
+			agent any
+			steps {
+				script {
+					def app = docker.image("$DOCKERHUB_CREDENTIALS_USR/hello_world")
+					def client = docker.image("curlimages/curl")
+
+					withDockerNetwork{ n ->
+						app.withRun("--name app --network ${n}") { c ->
+							client.inside("--network ${n}") {
+                echo "I'm client!"
+                sh "sleep 60"
+								sh "curl -S --fail http://app:8080 > curl_output.txt"
+                sh "cat curl_output.txt"
+                archiveArtifacts artifacts: 'curl_output.txt'
+							}
+						}
+          }
+				}
+			}
+    }
+
+		stage('Login') {
+			steps {
+				sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+			}
+		}
+
+
+
+		stage('Push') {
+			steps {
+				sh 'docker push $DOCKERHUB_CREDENTIALS_USR/hello_world:latest'
+			}
+		}
 	}
 
 	post {
-       always {
-          sh "docker-compose down || true"
-       }
-
-       success {
-          bitbucketStatusNotify buildState: "SUCCESSFUL"
-       }
-
-       failure {
-          bitbucketStatusNotify buildState: "FAILED"
-       }
-    }
+		always {
+			sh 'docker logout'
+		}
+	}
 }
