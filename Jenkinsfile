@@ -11,7 +11,7 @@ def withDockerNetwork(Closure inner) {
 pipeline{
 	agent any
 	environment {
-	    DOCKER_HUB_VERSION = JAR_VERSION.replace("-SNAPSHOT", "-snapshot")
+	    DOCKER_HUB_VERSION = "2.9.1"
         DOCKER_HUB_USER = 'hello_world'
         DOCKER_HUB_REPOSITORY = 'spring-petclinic'
 		DOCKERHUB_CREDENTIALS=credentials('dockerhub')
