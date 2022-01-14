@@ -10,42 +10,16 @@ def withDockerNetwork(Closure inner) {
 
 pipeline{
 	agent any
-	environment {
-// 	получпаем реквизиты для входа
-		DOCKERHUB_CREDENTIALS=credentials('dockerhub')
-	}
 	stages {
 		stage('Build') {
 			steps {
-				bat 'docker build -t $DOCKERHUB_CREDENTIALS_USR/dockerhub'
+				bat 'docker build github.com/18missDar/DockerProject'
 			}
 		}
 
-		stage("Check") {
-			agent any
-			steps {
-				script {
-					def app = docker.image("$DOCKERHUB_CREDENTIALS_USR/dockerhub")
-					def client = docker.image("curlimages/curl")
-
-					withDockerNetwork{ n ->
-						app.withRun("--name app --network ${n}") { c ->
-							client.inside("--network ${n}") {
-                echo "I'm client!"
-                bat "sleep 60"
-								bat "curl -S --fail http://app:8080 > curl_output.txt"
-                bat "cat curl_output.txt"
-                archiveArtifacts artifacts: 'curl_output.txt'
-							}
-						}
-          }
-				}
-			}
-    }
-
 		stage('Push') {
 			steps {
-				bat 'docker push $DOCKERHUB_CREDENTIALS_USR/dockerhub'
+				bat 'docker image push --all-tags registry-host:5000/myname/myimage'
 			}
 		}
 	}
