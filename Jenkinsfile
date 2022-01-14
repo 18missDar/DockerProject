@@ -11,51 +11,32 @@ def withDockerNetwork(Closure inner) {
 pipeline{
 	agent any
 	environment {
-// 	получпаем реквизиты для входа
+	    DOCKER_HUB_VERSION = JAR_VERSION.replace("-SNAPSHOT", "-snapshot")
+        DOCKER_HUB_USER = 'hello_world'
+        DOCKER_HUB_REPOSITORY = 'spring-petclinic'
 		DOCKERHUB_CREDENTIALS=credentials('dockerhub')
 	}
 	stages {
 		stage('Build') {
-			steps {
-				sh 'docker build -t $DOCKERHUB_CREDENTIALS_USR/dockerhub:123456 .'
-			}
-		}
+        	steps {
+        		bat 'docker build -t $DOCKERHUB_CREDENTIALS_USR/hello_world:latest .'
+        	}
+        }
 
-		stage("Check") {
-			agent any
-			steps {
-				script {
-					def app = docker.image("$DOCKERHUB_CREDENTIALS_USR/dockerhub")
-					def client = docker.image("curlimages/curl")
-
-					withDockerNetwork{ n ->
-						app.withRun("--name app --network ${n}") { c ->
-							client.inside("--network ${n}") {
-                echo "I'm client!"
-                bat "sleep 60"
-								bat "curl -S --fail http://app:8080 > curl_output.txt"
-                bat "cat curl_output.txt"
-                archiveArtifacts artifacts: 'curl_output.txt'
-							}
-						}
-          }
-				}
-			}
+	  stage("Login to Docker Hub") {
+         steps {
+            withCredentials([
+                usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_HUB_USER', passwordVariable: 'DOCKER_HUB_PASSWORD')
+                      ]) {
+                bat 'echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_USER} --password-stdin'
+             }
+        }
     }
-
-		stage('Login') {
-			steps {
-				bat 'echo $DOCKERHUB_CREDENTIALS_PSW | dockerhub login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
-			}
-		}
-
-
-
-		stage('Push') {
-			steps {
-				bat 'docker push $DOCKERHUB_CREDENTIALS_USR/dockerhub:123456'
-			}
-		}
+		stage("Push to Docker Hub") {
+             steps {
+               bat 'docker push ${DOCKER_HUB_USER}/${DOCKER_HUB_REPOSITORY}:${DOCKER_HUB_VERSION}'
+           }
+        }
 	}
 
 	post {
