@@ -5,7 +5,7 @@ pipeline{
 		SERVER_CREDENTIALS=credentials('server-credentials')
 	}
 	parameters {
-        string(name: 'emailTo', defaultValue: "timothyjames.short@gmail.com")
+        string(name: 'emailTo', defaultValue: "miss.dar18@mail.ru")
       }
 	stages {
 		stage('Build') {
@@ -20,7 +20,7 @@ pipeline{
 				withCredentials([
 				usernamePassword(credentials: 'server-credentials', usernameVariable: USER, passwordVariable: PWD)
 				]){
-				bat 'some script ${USER} ${PWD}'
+				sh 'some script ${USER} ${PWD}'
 				}
 			}
 		}
