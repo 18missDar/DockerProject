@@ -7,17 +7,12 @@ pipeline{
 	environment {
 	    VERSION = '1.1.0'
 	    SERVER_CREDENTIALS = credentials('server-credentials')
-	    imagename = "18missDar/DockerProject"
-        registryCredential = 'dockerhub'
-        dockerImage = ''
 	}
 	stages {
 		stage('Build') {
 			steps {
 				echo "build stage with version ${VERSION}"
-				script {
-                    dockerImage = docker.build imagename
-                }
+				bat "docker build https://github.com/18missDar/DockerProject.git#container:docker"
 			}
 		}
 
@@ -29,12 +24,8 @@ pipeline{
 		}
 		 stage("Push to Docker Hub") {
             steps {
-               script {
-                    docker.withRegistry( '', registryCredential)
-                    dockerImage.push("$BUILD_NUMBER")
-                    dockerImage.push('latest')
-
-               }
+              echo 'push stage'
+              bat "docker image push registry-host:5000/myadmin/rhel-httpd:latest"
             }
          }
 		stage("Create networks") {
