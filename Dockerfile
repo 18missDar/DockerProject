@@ -1,13 +1,20 @@
-FROM maven:3.6.0-jdk-11 AS build
-WORKDIR /petclinic
+FROM openjdk:11-slim-buster AS build
+WORKDIR /app
 
-COPY pom.xml ./
-COPY src ./src
+COPY .mvn .mvn
+COPY mvnw .
+COPY pom.xml .
+COPY src src
 
-RUN mvn clean package
+RUN --mount=type=cache,target=/root/.m2,rw ./mvnw -B clean package
 
-FROM openjdk:11-jre-slim
+FROM openjdk:11-jre-slim-buster
+ARG JAR_ARTIFACT_ID=spring-petclinic
+ARG JAR_VERSION=UNKNOWN
 
-COPY --from=build /petclinic/target/spring-petclinic-*.jar /petclinic.jar
+COPY --from=build /app/target/${JAR_ARTIFACT_ID}-${JAR_VERSION}.jar /spring-petclinic.jar
 
-CMD ["java", "-jar", "petclinic.jar"]
+EXPOSE 9000
+
+ENTRYPOINT ["java"]
+CMD ["-jar", "-Dserver.port=9000", "spring-petclinic.jar"]

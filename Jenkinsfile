@@ -12,7 +12,7 @@ pipeline{
 		stage('Build') {
 			steps {
 				echo "build stage with version ${VERSION}"
-				bat "docker build -t name:tage ."
+				bat "docker build -t petclinic:tage ."
 			}
 		}
 
@@ -25,7 +25,7 @@ pipeline{
 		 stage("Push to Docker Hub") {
             steps {
               echo 'push stage'
-              bat "docker image push name:tage"
+              bat "docker push petclinic:tage"
             }
          }
 		stage("Create networks") {
