@@ -1,10 +1,10 @@
 def withDockerNetwork(Closure inner) {
   try {
     networkId = UUID.randomUUID().toString()
-    sh "docker network create ${networkId}"
+    bat "docker network create ${networkId}"
     inner.call(networkId)
   } finally {
-    sh "docker network rm ${networkId}"
+    bat "docker network rm ${networkId}"
   }
 }
 
@@ -17,7 +17,7 @@ pipeline{
 	stages {
 		stage('Build') {
 			steps {
-				sh 'docker build -t $DOCKERHUB_CREDENTIALS_USR/hello_world:latest .'
+				bat 'docker build -t $DOCKERHUB_CREDENTIALS_USR/hello_world:latest .'
 			}
 		}
 
@@ -32,9 +32,9 @@ pipeline{
 						app.withRun("--name app --network ${n}") { c ->
 							client.inside("--network ${n}") {
                 echo "I'm client!"
-                sh "sleep 60"
-								sh "curl -S --fail http://app:8080 > curl_output.txt"
-                sh "cat curl_output.txt"
+                bat "sleep 60"
+								bat "curl -S --fail http://app:8080 > curl_output.txt"
+                bat "cat curl_output.txt"
                 archiveArtifacts artifacts: 'curl_output.txt'
 							}
 						}
@@ -45,7 +45,7 @@ pipeline{
 
 		stage('Login') {
 			steps {
-				sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+				bat 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
 			}
 		}
 
@@ -53,14 +53,14 @@ pipeline{
 
 		stage('Push') {
 			steps {
-				sh 'docker push $DOCKERHUB_CREDENTIALS_USR/hello_world:latest'
+				bat 'docker push $DOCKERHUB_CREDENTIALS_USR/hello_world:latest'
 			}
 		}
 	}
 
 	post {
 		always {
-			sh 'docker logout'
+			bat 'docker logout'
 		}
 	}
 }
