@@ -7,12 +7,17 @@ pipeline{
 	environment {
 	    VERSION = '1.1.0'
 	    SERVER_CREDENTIALS = credentials('server-credentials')
-	    DOCKER_HUB_USER = 'dockerhub'
+	    imagename = "18missDar/DockerProject"
+        registryCredential = 'dockerhub'
+        dockerImage = ''
 	}
 	stages {
 		stage('Build') {
 			steps {
 				echo "build stage with version ${VERSION}"
+				script {
+                    dockerImage = docker.build imagename
+                }
 			}
 		}
 
@@ -24,14 +29,14 @@ pipeline{
 		}
 		 stage("Push to Docker Hub") {
             steps {
-               bat 'docker push ${DOCKER_HUB_USER}/petclinic:${VERSION}'
+               script {
+                    docker.withRegistry( '', registryCredential ) {
+                    dockerImage.push("$BUILD_NUMBER")
+                    dockerImage.push('latest')
+
+               }
             }
          }
-         stage("Pull from Docker Hub") {
-             steps {
-                bat 'docker pull ${DOCKER_HUB_USER}/petclinic:${VERSION}'
-            }
-        }
 		stage("Create networks") {
              steps {
                 script {
