@@ -25,12 +25,12 @@ pipeline{
 		}
 		 stage("Push to Docker Hub") {
             steps {
-               dat 'docker push ${DOCKER_HUB_USER}/${DOCKER_HUB_REPOSITORY}:${VERSION}'
+               bat 'docker push ${DOCKER_HUB_USER}/${DOCKER_HUB_REPOSITORY}:${VERSION}'
             }
          }
          stage("Pull from Docker Hub") {
              steps {
-                dat 'docker pull ${DOCKER_HUB_USER}/${DOCKER_HUB_REPOSITORY}:${VERSION}'
+                bat 'docker pull ${DOCKER_HUB_USER}/${DOCKER_HUB_REPOSITORY}:${VERSION}'
             }
         }
 		stage("Create networks") {
