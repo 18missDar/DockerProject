@@ -1,39 +1,51 @@
+def withDockerNetwork(Closure inner) {
+  try {
+    networkId = UUID.randomUUID().toString()
+    bat "docker network create ${networkId}"
+    inner.call(networkId)
+  } finally {
+    bat "docker network rm ${networkId}"
+  }
+}
 
 pipeline{
 	agent any
-    environment {
-		JAR_VERSION = bat (returnStdout: true, script: 'mvn help:evaluate -Dexpression=project.version -q -DforceStdout').trim()
-        JAR_ARTIFACT_ID = bat (returnStdout: true, script: 'mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout').trim()
-        DOCKER_HUB_VERSION = JAR_VERSION.replace("-SNAPSHOT", "-snapshot")
-        DOCKER_HUB_USER = 'dockerhub'
-        DOCKER_HUB_REPOSITORY = 'spring-petclinic'
+	environment {
+// 	получпаем реквизиты для входа
+		DOCKERHUB_CREDENTIALS=credentials('dockerhub')
 	}
 	stages {
-
-		stage("Build") {
-            steps {
-                script {
-                   docker.build("${DOCKER_HUB_USER}/${DOCKER_HUB_REPOSITORY}:${DOCKER_HUB_VERSION}", "--build-arg JAR_VERSION=${JAR_VERSION} --build-arg JAR_ARTIFACT_ID=${JAR_ARTIFACT_ID} -f Dockerfile .")
-               }
-           }
-       }
-       stage("Login to Docker Hub") {
-          steps {
-            withCredentials([
-                   usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_HUB_USER', passwordVariable: 'DOCKER_HUB_PASSWORD')
-                   ]) {
-                   bat 'echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_USER} --password-stdin'
-               }
-           }
-       }
-		stage('test') {
+		stage('Build') {
 			steps {
-				echo 'test stage'
+				bat 'docker build -t $DOCKERHUB_CREDENTIALS_USR/dockerhub'
 			}
 		}
-		stage('deploy') {
+
+		stage("Check") {
+			agent any
 			steps {
-				echo 'deploy stage'
+				script {
+					def app = docker.image("$DOCKERHUB_CREDENTIALS_USR/dockerhub")
+					def client = docker.image("curlimages/curl")
+
+					withDockerNetwork{ n ->
+						app.withRun("--name app --network ${n}") { c ->
+							client.inside("--network ${n}") {
+                echo "I'm client!"
+                bat "sleep 60"
+								bat "curl -S --fail http://app:8080 > curl_output.txt"
+                bat "cat curl_output.txt"
+                archiveArtifacts artifacts: 'curl_output.txt'
+							}
+						}
+          }
+				}
+			}
+    }
+
+		stage('Push') {
+			steps {
+				bat 'docker push $DOCKERHUB_CREDENTIALS_USR/dockerhub'
 			}
 		}
 	}
