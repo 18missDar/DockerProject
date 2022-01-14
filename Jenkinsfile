@@ -1,16 +1,12 @@
-
 pipeline{
 	agent any
 	environment {
-		SERVER_CREDENTIALS=credentials('server-credentials')
+	    VERSION = '1.1.0'
 	}
-	parameters {
-        string(name: 'emailTo', defaultValue: "miss.dar18@mail.ru")
-      }
 	stages {
 		stage('Build') {
 			steps {
-				echo 'build stage'
+				echo "build stage with version ${VERSION}"
 			}
 		}
 
@@ -20,13 +16,14 @@ pipeline{
 				withCredentials([
 				usernamePassword(credentials: 'server-credentials', usernameVariable: USER, passwordVariable: PWD)
 				]){
-				sh 'some script ${USER} ${PWD}'
+				echo "login with ${USR} and ${PWD}"
 				}
 			}
 		}
 		stage('Push') {
 			steps {
 				echo 'push stage'
+				bat 'docker image push --all-tags localhost:8080/'
 			}
 		}
 	}
@@ -35,22 +32,7 @@ pipeline{
 		always {
 			bat 'docker logout'
 		}
-		success {
-           emailNotification('Successfully Deployed to Staging')
-        }
-        failure {
-           emailNotification('FAILED to deploy to staging')
-        }
 	}
 }
 
 
-def emailNotification(status) {
-  emailext(
-  to: "${params.emailTo}",
-  subject: "${status}",
-  body: "Job Name: <b>${env.JOB_NAME}</b> <br>" +
-      "Build: <b>${env.BUILD_NUMBER}</b> <br>" +
-      "<a href=${env.BUILD_URL}>Check Console Output</a>"
-  )
-}
