@@ -8,7 +8,6 @@ pipeline{
 	    VERSION = '1.1.0'
 	    SERVER_CREDENTIALS = credentials('server-credentials')
 	    DOCKER_HUB_USER = 'dockerhub'
-        DOCKER_HUB_REPOSITORY = 'spring-petclinic'
 	}
 	stages {
 		stage('Build') {
@@ -25,12 +24,12 @@ pipeline{
 		}
 		 stage("Push to Docker Hub") {
             steps {
-               bat 'docker push ${DOCKER_HUB_USER}/${DOCKER_HUB_REPOSITORY}:${VERSION}'
+               bat 'docker push ${DOCKER_HUB_USER}/petclinic:${VERSION}'
             }
          }
          stage("Pull from Docker Hub") {
              steps {
-                bat 'docker pull ${DOCKER_HUB_USER}/${DOCKER_HUB_REPOSITORY}:${VERSION}'
+                bat 'docker pull ${DOCKER_HUB_USER}/petclinic:${VERSION}'
             }
         }
 		stage("Create networks") {
