@@ -23,28 +23,26 @@ pipeline{
         	}
         }
         stage("Check") {
-        	steps {
-        		script {
-        			def app = docker.image("8878t/project:latest")
-        			def client = docker.image("curlimages/curl:latest")
+        			agent any
+        			steps {
+        				script {
+        					def app = docker.image("8878t/project:latest")
+        					def client = docker.image("curlimages/curl")
 
-        			withDockerNetwork {
-        			    n ->
-        				app.withRun("--name app --network ${NET_PET}")
-        				{ c ->
-        					client.inside("--network ${NET_PET}")
-        						{
-        						echo "IT'S OK. SUCCESS"
-        						bat "sleep 60"
-        						bat "curl -S --fail http://app:3000 > curl_output.txt"
-        						bat "cat curl_output.txt"
-        						archiveArtifacts artifacts: 'curl_output.txt'
+        					withDockerNetwork{ n ->
+        						app.withRun("--name app --network ${n}") { c ->
+        							client.inside("--network ${n}") {
+                        echo "I'm client!"
+                        bat "sleep 60"
+        								bat "curl -S --fail http://app:8080 > curl_output.txt"
+                        bat "cat curl_output.txt"
+                        archiveArtifacts artifacts: 'curl_output.txt'
+        							}
         						}
-        						}
-        					}
+                  }
         				}
         			}
-        		}
+            }
 		 stage("Push to Docker Hub") {
             steps {
               echo 'push stage'
