@@ -1,21 +1,8 @@
-
-def nameNetwork(String prefix) {
-    return prefix + "-" + UUID.randomUUID().toString()
-}
-
 def petclinicNetwork
 def curlNetwork
 
-def nameContainer(String prefix) {
-    return prefix + "-cont-" + UUID.randomUUID().toString()
-}
-
 def petclinicContainer
 def curlContainer
-
-def checkCurlOutput(String curlOutput) {
-    return curlOutput.contains('<title>PetClinic :: a Spring Framework demonstration</title>')
-}
 
 pipeline{
 	agent any
@@ -49,8 +36,8 @@ pipeline{
         stage("Check") {
         steps {
             script {
-                petclinicContainer = nameContainer('petclinic')
-                curlContainer = nameContainer('curl')
+                petclinicContainer = UUID.randomUUID().toString()
+                curlContainer = UUID.randomUUID().toString()
                 bat ("docker run --name ${petclinicContainer} --network ${petclinicNetwork} -p 9000:9000 8878t/project:latest &")
                 def petclinicContainerRunning = bat(script: "docker container inspect -f '{{.State.Running}}' ${petclinicContainer}", returnStdout: true).trim()
                   while (!petclinicContainerRunning.equals("true")) {
