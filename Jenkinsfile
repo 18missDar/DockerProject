@@ -7,18 +7,12 @@ pipeline{
 	environment {
 	    VERSION = 'latest'
 	    SERVER_CREDENTIALS = credentials('server-credentials')
-	    USER = 'dockerhub'
-        REP = 'petclinic'
-        ART_ID = 'spring-petclinic'
 	}
 	stages {
 		stage('Build') {
 			steps {
 				echo "build stage with version ${VERSION}"
-				script
-                {
-                  docker.build("${USER}/${REP}:${VERSION}", "--build-arg JAR_VERSION=${VERSION} --build-arg JAR_ARTIFACT_ID=${ART_ID} -f Dockerfile .")
-                }
+				bat "docker build -t iis ."
 			}
 		}
 
