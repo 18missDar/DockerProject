@@ -2,6 +2,16 @@ def nameNetwork(String prefix) {
     return prefix + "-" + UUID.randomUUID().toString()
 }
 
+def withNetwork(Closure inner) {
+  try {
+    networkId = UUID.randomUUID().toString()
+    bat "docker network create ${networkId}"
+    inner.call(networkId)
+  } finally {
+    bat "docker network rm ${networkId}"
+  }
+}
+
 pipeline{
 	agent any
 	environment {
@@ -29,7 +39,7 @@ pipeline{
         					def app = docker.image("8878t/project:latest")
         					def client = docker.image("curlimages/curl")
 
-        					withDockerNetwork{ n ->
+        					withNetwork{ n ->
         						app.withRun("--name app --network ${n}") { c ->
         							client.inside("--network ${n}") {
                         echo "I'm client!"
@@ -49,17 +59,6 @@ pipeline{
               bat "docker push 8878t/project:latest"
             }
          }
-
-		stage("Create networks") {
-             steps {
-                script {
-                   petclinicNetwork = nameNetwork('petclinic')
-                   curlNetwork = nameNetwork('curl')
-             }
-             bat "docker network create ${petclinicNetwork}"
-             bat "docker network create ${curlNetwork}"
-           }
-        }
 	}
 
 	post {
