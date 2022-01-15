@@ -18,7 +18,7 @@ pipeline{
 
 		stage('Login') {
         	steps {
-        		bat 'echo Zimba<>$$$1| docker login -u miss.dar18@mail.ru --password-stdin'
+        		bat 'echo 123456789| docker login -u 8878t --password-stdin'
         	}
         }
 		 stage("Push to Docker Hub") {
