@@ -4,7 +4,6 @@ def withNetwork(Closure inner) {
     bat "docker network create ${networkId}"
     inner.call(networkId)
     bat "docker network rm ${networkId}"
-
 }
 
 pipeline{
@@ -34,9 +33,9 @@ pipeline{
         					def client = docker.image("curlimages/curl")
 
         					withNetwork{ n ->
-        						app.withRun("--name myapp --network ${n}") { c ->
+        						app.withRun("--name myap --network ${n}") { c ->
         							client.inside("--network ${n}") {
-                        echo "I'm client!"
+                        echo "It's ok. Success"
                         bat "sleep 60"
         				bat "curl -S --fail http://app:8080 > curl_output.txt"
                         bat "cat curl_output.txt"
