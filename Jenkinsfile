@@ -17,7 +17,7 @@ pipeline{
 		stage('Build') {
 			steps {
 				echo "build stage with version ${VERSION}"
-				bat "docker build -t 8878t/project:latest ."
+				bat "docker build -t 8878t/repodocker:latest ."
 			}
 		}
 
@@ -31,7 +31,7 @@ pipeline{
         agent any
         			steps {
         				script {
-        					def app = docker.image("8878t/project:latest")
+        					def app = docker.image("8878t/repodocker:latest")
         					def client = docker.image("curlimages/curl")
 
         					withDockerNetwork{ n ->
@@ -51,7 +51,7 @@ pipeline{
 		 stage("Push to Docker Hub") {
             steps {
               echo 'push stage'
-              bat "docker push 8878t/project:latest"
+              bat "docker push 8878t/repodocker:latest"
             }
          }
 	}
