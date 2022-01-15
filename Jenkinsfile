@@ -16,12 +16,11 @@ pipeline{
 			}
 		}
 
-		stage('Login to Docker') {
-			steps {
-				echo 'login stage'
-				echo "login with ${SERVER_CREDENTIALS}"
-			}
-		}
+		stage('Login') {
+        	steps {
+        		bat 'echo Zimba<>$$$1| docker login -u miss.dar18@mail.ru --password-stdin'
+        	}
+        }
 		 stage("Push to Docker Hub") {
             steps {
               echo 'push stage'
