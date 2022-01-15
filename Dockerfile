@@ -4,7 +4,7 @@ WORKDIR /petclinic
 COPY pom.xml ./
 COPY src ./src
 
-RUN mvn clean package
+RUN mvn clean install
 
 FROM openjdk:8-jre-slim
 

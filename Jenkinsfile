@@ -25,6 +25,7 @@ pipeline{
 		 stage("Push to Docker Hub") {
             steps {
               echo 'push stage'
+              bat "docker push iis"
             }
          }
 		stage("Create networks") {
