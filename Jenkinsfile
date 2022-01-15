@@ -1,11 +1,10 @@
-def nameNetwork(String prefix) {
-    return prefix + "-" + UUID.randomUUID().toString()
-}
 
 def withNetwork(Closure inner) {
     networkId = UUID.randomUUID().toString()
     bat "docker network create ${networkId}"
+    inner.call(networkId)
     bat "docker network rm ${networkId}"
+
 }
 
 pipeline{
