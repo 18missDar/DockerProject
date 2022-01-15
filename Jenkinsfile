@@ -5,14 +5,20 @@ def nameNetwork(String prefix) {
 pipeline{
 	agent any
 	environment {
-	    VERSION = '1.1.0'
+	    VERSION = 'latest'
 	    SERVER_CREDENTIALS = credentials('server-credentials')
+	    USER = 'dockerhub'
+        REP = 'petclinic'
+        ART_ID = 'spring-petclinic'
 	}
 	stages {
 		stage('Build') {
 			steps {
 				echo "build stage with version ${VERSION}"
-				bat "docker build -t iis ."
+				script
+                {
+                  docker.build("${USER}/${REP}:${VERSION}", "--build-arg JAR_VERSION=${VERSION} --build-arg JAR_ARTIFACT_ID=${ART_ID} -f Dockerfile .")
+                }
 			}
 		}
 
