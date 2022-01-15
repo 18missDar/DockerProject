@@ -4,6 +4,7 @@ def nameNetwork(String prefix) {
 
 def withNetwork(Closure inner) {
     networkId = UUID.randomUUID().toString()
+    bat "docker network create ${networkId}"
     bat "docker network rm ${networkId}"
 }
 
