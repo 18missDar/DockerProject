@@ -12,7 +12,7 @@ pipeline{
 		stage('Build') {
 			steps {
 				echo "build stage with version ${VERSION}"
-				bat "docker build -t iis ."
+				bat "docker build -t 8878t/project:latest ."
 			}
 		}
 
@@ -25,7 +25,7 @@ pipeline{
 		 stage("Push to Docker Hub") {
             steps {
               echo 'push stage'
-              bat "docker push iis"
+              bat "docker push 8878t/project:latest"
             }
          }
 		stage("Create networks") {
