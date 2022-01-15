@@ -12,7 +12,7 @@ pipeline{
 		stage('Build') {
 			steps {
 				echo "build stage with version ${VERSION}"
-				bat "docker build ."
+				bat "docker build -t iis ."
 			}
 		}
 
