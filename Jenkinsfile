@@ -3,13 +3,8 @@ def nameNetwork(String prefix) {
 }
 
 def withNetwork(Closure inner) {
-  try {
     networkId = UUID.randomUUID().toString()
-    bat "docker network create ${networkId}"
-    inner.call(networkId)
-  } finally {
     bat "docker network rm ${networkId}"
-  }
 }
 
 pipeline{
@@ -17,7 +12,6 @@ pipeline{
 	environment {
 	    VERSION = 'latest'
 	    SERVER_CREDENTIALS = credentials('server-credentials')
-	    NET_PET = UUID.randomUUID().toString()
 	}
 	stages {
 		stage('Build') {
@@ -33,8 +27,8 @@ pipeline{
         	}
         }
         stage("Check") {
-        			agent any
-        			steps {
+        	agent any
+        		steps {
         				script {
         					def app = docker.image("8878t/project:latest")
         					def client = docker.image("curlimages/curl")
@@ -44,14 +38,14 @@ pipeline{
         							client.inside("--network ${n}") {
                         echo "I'm client!"
                         bat "sleep 60"
-        								bat "curl -S --fail http://app:8080 > curl_output.txt"
+        				bat "curl -S --fail http://app:8080 > curl_output.txt"
                         bat "cat curl_output.txt"
                         archiveArtifacts artifacts: 'curl_output.txt'
         							}
         						}
-                  }
-        				}
-        			}
+                }
+                }
+        		}
             }
 		 stage("Push to Docker Hub") {
             steps {
