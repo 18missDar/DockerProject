@@ -64,9 +64,9 @@ pipeline{
                   println("Waiting for Spring Pet Clinic app readiness...")
                   sleep(5)
                   petclinicAppRunning = bat(script: "docker container logs ${petclinicContainer}", returnStdout: true)
-        }
-        }
-
+                  }
+            }
+          }
         }
 		 stage("Push to Docker Hub") {
             steps {
