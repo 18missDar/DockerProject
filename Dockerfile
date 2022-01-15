@@ -4,6 +4,7 @@ WORKDIR /petclinic
 COPY pom.xml ./
 COPY src ./src
 
+RUN mvn clean package
 
 FROM openjdk:11-jre-slim
 
