@@ -26,8 +26,8 @@ pipeline{
         stage("Create networks") {
             steps {
                 script {
-                    petclinicNetwork = nameNetwork('petclinic')
-                    curlNetwork = nameNetwork('curl')
+                    petclinicNetwork = UUID.randomUUID().toString()
+                    curlNetwork = UUID.randomUUID().toString()
                 }
                 bat "docker network create ${petclinicNetwork}"
                 bat "docker network create ${curlNetwork}"
