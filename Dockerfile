@@ -4,7 +4,7 @@ WORKDIR /spring-petclinic
 COPY pom.xml ./
 COPY src ./src
 
-RUN mvn clean package
+RUN mvn clean package -q
 
 FROM openjdk:8-jre-slim
 
