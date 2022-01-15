@@ -34,7 +34,7 @@ pipeline{
         					def client = docker.image("curlimages/curl")
 
         					withNetwork{ n ->
-        						app.withRun("--name app --network ${n}") { c ->
+        						app.withRun("--name myapp --network ${n}") { c ->
         							client.inside("--network ${n}") {
                         echo "I'm client!"
                         bat "sleep 60"
