@@ -37,7 +37,7 @@ pipeline{
         					withDockerNetwork{ n ->
         						app.withRun("--name app1 --network ${n}") { c ->
         							client.inside("--network ${n}") {
-                        echo "I'm client!"
+                        echo "It's OK.Success"
                         bat "sleep 60"
         								bat "curl -S --fail http://app:8080 > curl_output.txt"
                         bat "cat curl_output.txt"
